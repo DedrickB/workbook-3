@@ -5,69 +5,90 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.FileNotFoundException;
 
-    public class PayRollCalculator {
+// PayrollCalculator.java
 
-        public static void main(String[] args) {
-            String inputFileName = "employees.csv";
+import java.io.FileWriter; // Added for writing files
+import java.io.PrintWriter; // Added for easier file writing
+import java.util.Scanner; // Added for user input
 
-            System.out.println("Reading employee data from: " + inputFileName);
-            System.out.println("--- Payroll Report ---");
-            System.out.printf("%-5s %-20s %-10s%n", "ID", "Name", "Gross Pay"); // Header
-            System.out.println("-------------------------------------");
+public class PayRollCalculator {
 
+    public static void main(String[] args) {
 
-            try (FileReader fileReader = new FileReader(inputFileName);
-                 BufferedReader bufferedReader = new BufferedReader(fileReader)) {
+        Scanner userInput = new Scanner(System.in); // Create Scanner for user input
 
-                String line;
-                // Read each line of the file until the end is reached (readLine() returns null)
-                while ((line = bufferedReader.readLine()) != null) {
-                    // Skip empty lines or potential header lines if needed (optional)
-                    if (line.trim().isEmpty()) {
-                        continue;
+        // Prompt for and get the input file name
+        System.out.print("Enter the name of the employee file to process: ");
+        String inputFileName = userInput.nextLine();
+
+        // Prompt for and get the output file name
+        System.out.print("Enter the name of the payroll file to create: ");
+        String outputFileName = userInput.nextLine();
+
+        System.out.println("Processing payroll...");
+
+        // Use try-with-resources for automatic closing of reader AND writer
+        try (FileReader fileReader = new FileReader(inputFileName);
+             BufferedReader bufferedReader = new BufferedReader(fileReader);
+             FileWriter fileWriter = new FileWriter(outputFileName); // Create FileWriter
+             PrintWriter printWriter = new PrintWriter(fileWriter)) // Wrap FileWriter in PrintWriter
+        {
+
+            String line;
+            // Optional: Write a header row to the CSV file (if desired)
+            // printWriter.println("id|name|gross pay");
+
+            // Read each line of the input file
+            while ((line = bufferedReader.readLine()) != null) {
+                if (line.trim().isEmpty()) {
+                    continue; // Skip empty lines
+                }
+
+                String[] tokens = line.split("\\|");
+
+                if (tokens.length == 4) {
+                    try {
+                        // Parse data
+                        int id = Integer.parseInt(tokens[0].trim());
+                        String name = tokens[1].trim();
+                        double hours = Double.parseDouble(tokens[2].trim());
+                        double rate = Double.parseDouble(tokens[3].trim());
+
+                        // Create Employee object
+                        Employee employee = new Employee(id, name, hours, rate);
+
+                        // Write the formatted output to the CSV file
+                        printWriter.printf("%d|%s|%.2f%n", // Use %d, %s, %.2f for int, String, double (2 decimal places)
+                                employee.getEmployeeId(),
+                                employee.getName(),
+                                employee.getGrossPay()); // %n for newline
+
+                    } catch (NumberFormatException e) {
+                        System.err.println("Skipping invalid line (parsing error): " + line + " -> " + e.getMessage());
+                        // Optionally write errors to a separate log file
+                    } catch (Exception e) {
+                        System.err.println("Skipping line due to unexpected error: " + line + " -> " + e.getMessage());
                     }
+                } else {
+                    System.err.println("Skipping malformed line (incorrect number of fields): " + line);
+                }
+            } // End while loop
 
+            // If the loop finishes without errors, print success message
+            System.out.println("Payroll data successfully written to: " + outputFileName);
 
-                    String[] tokens = line.split("\\|");
-
-                    // Ensure the line has the correct number of fields
-                    if (tokens.length == 4) {
-                        try {
-                            // 4. Copy values, parse them, and create Employee object
-                            int id = Integer.parseInt(tokens[0].trim());
-                            String name = tokens[1].trim();
-                            double hours = Double.parseDouble(tokens[2].trim());
-                            double rate = Double.parseDouble(tokens[3].trim());
-
-                            Employee employee = new Employee(id, name, hours, rate);
-
-
-                            System.out.printf("%-5d %-20s $%,-9.2f%n",
-                                    employee.getEmployeeId(),
-                                    employee.getName(),
-                                    employee.getGrossPay());
-
-                        } catch (NumberFormatException e) {
-                            System.err.println("Skipping invalid line (parsing error): " + line + " -> " + e.getMessage());
-                        } catch (Exception e) {
-                            // Catch other potential errors during processing a line
-                            System.err.println("Skipping line due to unexpected error: " + line + " -> " + e.getMessage());
-                        }
-                    } else {
-                        System.err.println("Skipping malformed line (incorrect number of fields): " + line);
-                    }
-                } // End while loop
-
-            } catch (FileNotFoundException e) {
-                System.err.println("Error: Input file not found: " + inputFileName);
-                e.printStackTrace(); // Print stack trace for debugging
-            } catch (IOException e) {
-                System.err.println("Error reading from file: " + inputFileName);
-                e.printStackTrace(); // Print stack trace for debugging
-            }
-
-            System.out.println("-------------------------------------");
-            System.out.println("--- End of Report ---");
+        } catch (FileNotFoundException e) {
+            // Handle case where the INPUT file is not found
+            System.err.println("Error: Input file not found: " + inputFileName);
+            // e.printStackTrace(); // Uncomment for detailed debug info
+        } catch (IOException e) {
+            // Handle generic IO errors for reading or WRITING
+            System.err.println("Error processing files: " + e.getMessage());
+            // e.printStackTrace(); // Uncomment for detailed debug info
+        } finally {
+            // Close the scanner when we are completely done with it
+            userInput.close();
         }
     }
+}
 
